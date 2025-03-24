@@ -1,99 +1,48 @@
-import os
-import tkinter as tk
-import webbrowser
-from tkinter import filedialog, messagebox, ttk
-
-import matplotlib.pyplot as plt
-import numpy as np
+import streamlit as st
 import pandas as pd
-import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
 
-df = pd.read_csv("./data/Tj_analyser.csv")
+# Title of the dashboard
+st.title("Dashboard")
 
+# Sidebar for interactivity
+st.sidebar.header("Dashboard Controls")
+time_period = st.sidebar.selectbox("Select Time Period", ["Daily", "Weekly", "Monthly"])
+show_raw_data = st.sidebar.checkbox("Show Raw Data", value=False)
 
-def plot_gains_curve(df, pl):
-    # x = pd.to_datetime(df["date"]).dt.strftime("%d-%m-%y")
-    x = range(len(df))
-    plt.style.use("dark_background")
-    sns.lineplot(x=x, y=pl)
-    plt.title("Gains %")
-    plt.xlabel("Trades")
-    plt.ylabel("Cumulative P/L (%)")
-    plt.legend()
-    plt.xticks(rotation=70, fontsize=8)
-    plt.tight_layout()
-    plt.savefig("./exported_data/equity_curve.png")  # Save PNG, don’t close
+# Sample data (replace with your own data source)
+@st.cache_data
+def load_sample_data():
+    dates = pd.date_range(start="2025-01-01", end="2025-03-23", freq="D")
+    data = pd.DataFrame({
+        "Date": dates,
+        "Sales": np.random.randint(100, 1000, len(dates)),
+        "Users": np.random.randint(50, 500, len(dates))
+    })
+    return data
 
+data = load_sample_data()
 
-def plot_outcome_by_day(df):
-    df["DoW"] = pd.to_datetime(df["date"]).dt.day_name().str.lower()
-    plt.style.use("dark_background")
-    data = df.groupby(["DoW", "outcome"]).size().reset_index(name="count")
-    sns.barplot(data=data, x="DoW", y="count", hue="outcome", palette="Paired", edgecolor="black", linewidth=1)
-    plt.title("Wins and Losses by Day")
-    plt.xlabel("")
-    plt.ylabel("Count")
-    plt.tight_layout()
-    plt.savefig("./exported_data/outcome_by_day.png")
+# Filter data based on time period (simplified example)
+if time_period == "Weekly":
+    data = data.resample("W", on="Date").sum().reset_index()
+elif time_period == "Monthly":
+    data = data.resample("M", on="Date").sum().reset_index()
 
+# Key Metrics
+col1, col2 = st.columns(2)
+col1.metric("Total Sales", f"${data['Sales'].sum():,.2f}")
+col2.metric("Total Users", f"{data['Users'].sum():,}")
 
-def pl_distribution(pl_raw):
-    plt.style.use("dark_background")
-    sns.histplot(pl_raw, bins=10, kde=True)
-    plt.title("Distribution of P/L by %")
-    plt.xlabel("P/L (%)")
-    plt.tight_layout()
-    plt.savefig("./exported_data/pl_distribution.png")
+# Chart
+# st.subheader("Sales and Users Over Time")
+# fig = sns.line(data, x="Date", y=["Sales", "Users"], title="Performance Trends")
+# st.plotly_chart(fig)
 
+# Optional raw data table
+if show_raw_data:
+    st.subheader("Raw Data")
+    st.dataframe(data)
 
-def boxplot_DoW(df, pl_raw):
-    df["DoW"] = pd.to_datetime(df["date"]).dt.day_name().str.lower()
-    plt.style.use("dark_background")
-    sns.boxplot(x=df["DoW"], y=pl_raw, hue=df["outcome"], palette="YlGnBu")
-    plt.title("Boxplot of P/L by Day")
-    plt.xlabel("")
-    plt.ylabel("P/L (%)")
-    plt.tight_layout()
-    plt.savefig("./exported_data/boxplot_DoW_vs_PL.png")
-
-
-def risk_vs_reward_scatter(df):
-    risk = np.array([x for x in np.random.uniform(1, 2.1, len(df))])
-    pl = np.array([x for x in np.random.uniform(-1, 3.1, len(df))])
-
-    plt.style.use("dark_background")
-    sns.scatterplot(x=risk, y=pl, hue=df["outcome"], palette="coolwarm")
-    plt.title("Risk vs Reward")
-    plt.xlabel("Risk (%)")
-    plt.ylabel("P/L (%)")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("./exported_data/risk_vs_reward.png")
-    plt.show()
-
-
-risk_vs_reward_scatter(df)
-
-
-def heatmap_rr(df):
-    def parse_time(time_str):
-        try:
-            return pd.to_datetime(time_str, format="%H:%M:%S").time()
-        except ValueError:
-            try:
-                return pd.to_datetime(time_str + ":00", format="%H:%M:%S").time()
-            except:
-                return pd.to_datetime("00:00", format="%H:%M").time()
-
-    df["DoW"] = pd.to_datetime(df["date"]).dt.day_name().str.lower()
-    hours = df["entry_time"].apply(parse_time).apply(lambda x: x.hour if pd.notna(x) else None)
-    matrix = pd.pivot_table(df, values="pl_by_rr", index=hours, columns="DoW", aggfunc="sum")
-    plt.style.use("dark_background")
-    sns.heatmap(matrix, annot=True, cmap="RdBu_r")
-    plt.title("Cumulative P/L by Days vs Hours")
-    plt.xlabel("")
-    plt.ylabel("Hour of Entry")
-    plt.yticks(rotation=0)
-    plt.tight_layout()
-    plt.savefig("./exported_data/days_vs_hours_pl.png")
+# Footer
+st.write("Dashboard updated as of March 23, 2025.")

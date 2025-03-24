@@ -1,4 +1,5 @@
 import time  # For demo delays
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -37,7 +38,7 @@ def calculate_stats(df):
 # Main app
 st.title("Trading Journal Analyser")
 
-uploaded_file = st.file_uploader("Upload your trade data (CSV or Excel)", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Upload your trades data (CSV or Excel)", type=["csv", "xlsx"])
 
 if uploaded_file:
     # Spinner for loading
@@ -53,26 +54,34 @@ if uploaded_file:
     progress_bar = st.progress(0)
     with st.spinner("Calculating stats..."):
         pl, pl_raw, stats = calculate_stats(df)
-        progress_bar.progress(33)  # 1/3 done
+        progress_bar.progress(43)  # 1/3 done
 
     # Plotting with progress updates
     with st.spinner("Generating plots..."):
         fig, ax = plt.subplots()
         sns.lineplot(x=range(len(df)), y=pl, ax=ax)
         st.pyplot(fig)
-        progress_bar.progress(66)  # 2/3 done
+        progress_bar.progress(100)
+        st.write("Stats:", stats)
 
-    # PDF export
-    with st.spinner("Exporting to PDF..."):
-        with PdfPages("trading_report.pdf") as pdf:
-            pdf.savefig(fig)
-        progress_bar.progress(100)  # Done!
 
-    # Success message
-    st.success("Analysis complete!")
-    st.write("Stats:", stats)
-    with open("trading_report.pdf", "rb") as file:
-        st.download_button("Download PDF", file, "trading_report.pdf")
+    # Button to trigger PDF saving
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF..."):
+            # Create and save PDF
+            with PdfPages("trading_report.pdf") as pdf:
+                pdf.savefig(fig)
+                st.progress(100)  # Show completion
+                
+            # Success message and download button
+            st.success("PDF Report created!")
+            with open("trading_report.pdf", "rb") as file:
+                st.download_button(
+                    label="Download PDF",
+                    data=file,
+                    file_name="trading_report.pdf",
+                    mime="application/pdf"
+                )
 
     # Clear progress bar after completion
     progress_bar.empty()
